@@ -1,0 +1,21 @@
+[
+  {
+    "create": "tokens",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "user_id": {
+            "bsonType": "objectId"
+          },
+          "refresh": {
+            "bsonType": "string"
+          },
+          "used": {
+            "bsonType": "bool"
+          }
+        }
+      }
+    }
+  }
+]

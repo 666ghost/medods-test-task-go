@@ -1,0 +1,16 @@
+[
+  {
+    "create": "users",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "properties": {
+          "guid": {
+            "bsonType": "string",
+            "maximum": 128
+          }
+        }
+      }
+    }
+  }
+]
