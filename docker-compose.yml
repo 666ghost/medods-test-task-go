@@ -1,0 +1,49 @@
+version: '3.7'
+networks:
+  mongo-net:
+    name: mongo-net
+    driver: bridge
+services:
+  mongo-2:
+    hostname: mongo-2
+    container_name: mongo-2
+    image: mongo
+    entrypoint: [ "/usr/bin/mongod", "--keyFile", "/data/file.key", "--replSet", "rs", "--journal", "--bind_ip_all" ]
+    ports:
+      - "27018:27017"
+    restart: always
+    networks:
+      - mongo-net
+    volumes:
+      - "./scripts/file.key:/data/file.key"
+
+  mongo-1:
+    hostname: mongo-1
+    container_name: mongo-1
+    image: mongo
+    entrypoint: [ "/usr/bin/mongod", "--keyFile", "/data/file.key", "--replSet", "rs", "--journal", "--bind_ip_all" ]
+    ports:
+      - "27019:27017"
+    restart: always
+    networks:
+      - mongo-net
+    volumes:
+      - "./scripts/file.key:/data/file.key"
+
+  mongo-0:
+    hostname: mongo-0
+    container_name: mongo-0
+    image: mongo
+    command: bash -c "/usr/bin/mongod --keyFile /data/file.key --replSet rs --journal --bind_ip_all"
+    ports:
+      - "27017:27017"
+    links:
+      - mongo-1:mongo-1
+      - mongo-2:mongo-2
+    restart: always
+    networks:
+      - mongo-net
+    volumes:
+      - "./scripts/setup_mongo.sh:/scripts/setup.sh"
+      - "./scripts/create_mongo_db.sh:/scripts/create_admin.sh"
+      - "./scripts/file.key:/data/file.key"
