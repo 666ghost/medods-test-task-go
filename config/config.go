@@ -33,6 +33,9 @@ func New() *Config {
 }
 
 func LoadFromFile() {
+	if New().Env != "dev" {
+		return
+	}
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("No .env file found")
 	}
