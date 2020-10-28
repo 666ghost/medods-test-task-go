@@ -13,7 +13,7 @@ migrate
 
 
 # log files
-logs/*.log
+/logs/*.log
 
 
 # Test binary, built with `go test -c`
