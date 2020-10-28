@@ -19,14 +19,19 @@ import (
 
 type Handler struct{}
 
+type tokenReqBody struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 func (h *Handler) Create(c echo.Context) error {
-	log.Print("sdksdklfjsdlkfjsdf")
+	log.Print("Creating user")
 	u := &models.User{
 		ID:   primitive.NewObjectID(),
 		Guid: uuid.New().String(),
 	}
 	_, err := u.Insert(context.TODO())
 	if err != nil {
+		log.Print(err)
 		return echo.ErrInternalServerError
 	}
 	return c.JSON(http.StatusOK, map[string]string{
@@ -34,58 +39,55 @@ func (h *Handler) Create(c echo.Context) error {
 	})
 }
 
-type tokenReqBody struct {
-	RefreshToken   string `json:"refresh_token"`
-	RefreshTokenId string `json:"refresh_token_id"`
-}
-
 func (h Handler) Refresh(c echo.Context) error {
-	log.Print("1")
+	log.Print("refreshing tokens... ")
 
 	tokenReq := tokenReqBody{}
 	err := c.Bind(&tokenReq)
 
 	if err != nil {
-		panic(err)
+		log.Print("Failed parsing request", err)
+		return echo.ErrInternalServerError
 	}
-	log.Print("2")
 	rToken, err := jwt.Parse(tokenReq.RefreshToken, func(rToken *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
-		log.Print("3")
 		if _, ok := rToken.Method.(*jwt.SigningMethodHMAC); !ok {
-			log.Print("err")
+			log.Printf("Unexpected signing method: %v ", rToken.Header["alg"])
 			return nil, fmt.Errorf("Unexpected signing method: %v", rToken.Header["alg"])
 		}
 
 		return []byte(config.New().TokenSecret), nil
 	})
-	log.Print("4")
 
 	if err != nil || rToken == nil {
-		panic(err)
+		log.Print(err)
+		return echo.ErrForbidden
 	}
 
 	aToken := c.Get("user").(*jwt.Token)
 	aClaims, ok1 := aToken.Claims.(jwt.MapClaims)
-	log.Print("5")
+
 	if ok1 && rToken.Valid {
-		log.Print("6")
 		u, err := models.SelectUserByGuid(context.TODO(), aClaims["guid"].(string))
 		if err != nil {
-			panic(err)
+			log.Print("Failed to select user by guid ", err)
+			return echo.ErrNotFound
 		}
-		log.Print("7")
 		token, err := models.SelectUnusedTokenById(context.TODO(), aClaims["refresh_id"].(string))
 		if err != nil || token == nil {
-			panic(err)
+			log.Print("Failed getting unused token by id ", err)
+			return echo.ErrForbidden
 		}
-		log.Print("8")
 		if bcrypt.CompareHashAndPassword([]byte(token.Refresh), []byte(tokenReq.RefreshToken)) == nil {
-			tokenPair := getNewTokenPair(u)
-			log.Print("9")
+			tokenPair, err := getNewTokenPair(u)
+			if err != nil {
+				log.Print("Failed generating token pair ", err)
+				return echo.ErrInternalServerError
+			}
 			_, err = token.Update(context.TODO(), bson.D{{"used", true}})
 			if err != nil {
-				panic(err)
+				log.Print("Failed setting token used flag to true ", err)
+				return echo.ErrInternalServerError
 			}
 
 			return c.JSON(http.StatusOK, map[string]string{
@@ -102,7 +104,8 @@ func (h *Handler) Login(c echo.Context) error {
 	m := make(map[string]string)
 	err := c.Bind(&m)
 	if err != nil {
-		panic(err)
+		log.Print("failed parsing request ", err)
+		return echo.ErrInternalServerError
 	}
 	u, err := models.SelectUserByGuid(context.TODO(), m["guid"])
 	if err == mongo.ErrNoDocuments || u == nil {
@@ -110,11 +113,14 @@ func (h *Handler) Login(c echo.Context) error {
 	}
 	_, err = models.InvalidateOldUserRefreshTokens(context.TODO(), u)
 	if err != nil {
-		panic(err)
+		log.Print("failed invalidate old user tokens ", err)
 	}
 
-	tokenPair := getNewTokenPair(u)
-
+	tokenPair, err := getNewTokenPair(u)
+	if err != nil {
+		log.Print("Failed generating token pair ", err)
+		return echo.ErrInternalServerError
+	}
 	return c.JSON(http.StatusOK, map[string]string{
 		"access_token":  tokenPair["access_token"],
 		"refresh_token": tokenPair["refresh_token"],
@@ -127,18 +133,21 @@ func (h *Handler) RemoveToken(c echo.Context) error {
 	err := c.Bind(&m)
 
 	if err != nil {
-		panic(err)
+		log.Print("Failed parsing request ", err)
+		return echo.ErrInternalServerError
 	}
 	aToken := c.Get("user").(*jwt.Token)
 	aClaims, _ := aToken.Claims.(jwt.MapClaims)
 
 	u, err := models.SelectUserByGuid(context.TODO(), aClaims["guid"].(string))
 	if err != nil {
-		panic(err)
+		log.Print("Failed parsing request ", err)
+		return echo.ErrInternalServerError
 	}
-	tokenId, err := primitive.ObjectIDFromHex(m["refresh_token_id"])
+	tokenId, err := primitive.ObjectIDFromHex(m["refresh_id"])
 	if err != nil {
-		panic(err)
+		log.Print("Failed parsing refresh token id ", err)
+		return echo.ErrBadRequest
 	}
 
 	_, err = models.RemoveToken(context.TODO(), bson.M{"_id": tokenId, "user_id": u.ID})
@@ -146,7 +155,8 @@ func (h *Handler) RemoveToken(c echo.Context) error {
 	if err == mongo.ErrNoDocuments {
 		return echo.ErrNotFound
 	} else if err != nil {
-		panic(err)
+		log.Print("Failed removing tokens ", err)
+		return echo.ErrInternalServerError
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
@@ -157,15 +167,22 @@ func (h *Handler) TruncateUserTokens(c echo.Context) error {
 	m := make(map[string]string)
 	err := c.Bind(&m)
 	if err != nil {
-		panic(err)
+		log.Print("failed parsing request ", err)
+		return echo.ErrInternalServerError
 	}
-	uIdObj, _ := primitive.ObjectIDFromHex(m["user_id"])
-	_, err = models.RemoveToken(context.TODO(), bson.M{"user_id": uIdObj})
+	u, err := models.SelectUserByGuid(context.TODO(), m["guid"])
+	if err != nil {
+		log.Print("Failed to select user by guid ", err)
+		return echo.ErrNotFound
+	}
+
+	_, err = models.RemoveToken(context.TODO(), bson.M{"user_id": u.ID})
 
 	if err == mongo.ErrNoDocuments {
 		return echo.ErrNotFound
 	} else if err != nil {
-		panic(err)
+		log.Print("Failed removing tokens ", err)
+		return echo.ErrInternalServerError
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
@@ -173,7 +190,7 @@ func (h *Handler) TruncateUserTokens(c echo.Context) error {
 	})
 }
 
-func getNewTokenPair(u *models.User) map[string]string {
+func getNewTokenPair(u *models.User) (map[string]string, error) {
 	cfg := config.New()
 
 	refreshToken := jwt.New(jwt.SigningMethodHS256)
@@ -182,11 +199,11 @@ func getNewTokenPair(u *models.User) map[string]string {
 	rtClaims["exp"] = time.Now().Add(time.Hour * 24).Unix()
 	rt, err := refreshToken.SignedString([]byte(cfg.TokenSecret))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	hashedRToken, err := bcrypt.GenerateFromPassword([]byte(rt), bcrypt.DefaultCost)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	token := models.Token{
@@ -197,7 +214,7 @@ func getNewTokenPair(u *models.User) map[string]string {
 	}
 	savedToken, err := token.Insert(context.TODO())
 	if err != nil || savedToken == nil {
-		panic(err)
+		return nil, err
 	}
 	refreshId := savedToken.InsertedID.(primitive.ObjectID).Hex()
 
@@ -210,8 +227,8 @@ func getNewTokenPair(u *models.User) map[string]string {
 	// The signing string should be secret (a generated UUID          works too)
 	t, err := accessToken.SignedString([]byte(cfg.TokenSecret))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return map[string]string{"access_token": t, "refresh_token": rt, "refresh_id": refreshId}
+	return map[string]string{"access_token": t, "refresh_token": rt, "refresh_id": refreshId}, nil
 }

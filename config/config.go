@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/joho/godotenv"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -33,7 +34,7 @@ func New() *Config {
 
 func LoadFromFile() {
 	if err := godotenv.Load(); err != nil {
-		panic("No .env file found")
+		log.Fatal("No .env file found")
 	}
 }
 

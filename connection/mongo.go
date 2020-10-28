@@ -45,7 +45,7 @@ func GetClient(cfg *config.Config) (*mongo.Client, context.CancelFunc) {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	OnExitSecondary(func(ctx context.Context) {
 		if err := client.Disconnect(ctx); err != nil {
@@ -53,7 +53,7 @@ func GetClient(cfg *config.Config) (*mongo.Client, context.CancelFunc) {
 		}
 	})
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {
-		panic(err) // todo logger
+		log.Fatal(err) // todo logger
 	}
 	return client, cancel
 }

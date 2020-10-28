@@ -7,7 +7,9 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mongodb"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"log"
 	"os"
+	"time"
 )
 
 var action string
@@ -17,6 +19,16 @@ func init() {
 }
 
 func main() {
+	now := time.Now()
+	file, err := os.OpenFile("logs/migrate_logfile_"+now.Format("20060102")+".log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	log.SetOutput(file)
+	log.Print("Migrating db...")
+
 	if len(os.Args) < 2 {
 		fmt.Println("Set action argument: drop, down or up\nFor example: ./migrate up")
 		return
@@ -28,14 +40,16 @@ func main() {
 
 	driver, err := mongodb.WithInstance(client, &mongodb.Config{DatabaseName: cfg.DbName, TransactionMode: action != "down"})
 	if err != nil {
-		panic(err)
+		log.Fatal("Failed setting driver up ", err)
+		return
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://./db/migration/",
 		"medods", driver)
 	if err != nil {
-		panic(err)
+		log.Fatal("Failed creating new database instance ", err)
+		return
 	}
 	switch action {
 	case "drop":
@@ -57,7 +71,8 @@ func main() {
 		return
 	}
 	if err != nil {
-		panic(err)
+		log.Fatal("Failed migrating db", err)
+
 	}
 	fmt.Println("Successfully migrated")
 }
