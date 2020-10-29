@@ -31,7 +31,7 @@ func New() *Config {
 
 		TokenSecret: getEnv("TOKEN_SECRET", "secret"),
 
-		Port: getEnv("API_PORT", "8080"),
+		Port: getEnv("PORT", "8080"),
 	}
 }
 
