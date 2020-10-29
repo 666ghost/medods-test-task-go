@@ -38,7 +38,7 @@ func NewMongo(cfg *config.Config) *mongo.Database {
 }
 
 func GetClient(cfg *config.Config) (*mongo.Client, context.CancelFunc) {
-	uri := fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=rs",
+	uri := fmt.Sprintf("mongodb+srv://%s:%s@%s/?retryWrites=true&w=majority",
 		cfg.DbUser, cfg.DbPassword, strings.Join(cfg.DbAddresses, ","))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -55,5 +55,6 @@ func GetClient(cfg *config.Config) (*mongo.Client, context.CancelFunc) {
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {
 		log.Fatal(err) // todo logger
 	}
+	log.Print("connected to mongo")
 	return client, cancel
 }
