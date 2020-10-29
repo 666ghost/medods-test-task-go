@@ -16,6 +16,7 @@ type Config struct {
 	DbAddresses []string
 	DbPort      string
 	TokenSecret string
+	APIPort     string
 }
 
 // New returns a new Config struct
@@ -29,6 +30,8 @@ func New() *Config {
 		DbPort:      getEnv("DB_PORT", "27017"),
 
 		TokenSecret: getEnv("TOKEN_SECRET", "secret"),
+
+		APIPort: getEnv("API_PORT", "8080"),
 	}
 }
 

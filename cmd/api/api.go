@@ -41,5 +41,5 @@ func main() {
 	e.POST("/api/security/remove_refresh", h.RemoveToken, isLoggedIn)
 	e.POST("/api/users/security/truncate_refresh", h.TruncateUserTokens, isLoggedIn)
 
-	e.Logger.Fatal(e.Start(":80"))
+	e.Logger.Fatal(e.Start(":" + cfg.APIPort))
 }
