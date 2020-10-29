@@ -38,7 +38,7 @@ func main() {
 	cfg := config.New()
 	client := connection.MGMain().Client()
 
-	driver, err := mongodb.WithInstance(client, &mongodb.Config{DatabaseName: cfg.DbName, TransactionMode: action != "down"})
+	driver, err := mongodb.WithInstance(client, &mongodb.Config{DatabaseName: cfg.DbName})
 	if err != nil {
 		log.Fatal("Failed setting driver up ", err)
 		return
