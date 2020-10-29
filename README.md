@@ -15,7 +15,7 @@
 
 [https://medods-test-task.herokuapp.com](https://medods-test-task.herokuapp.com) - приложения на heroku 
 Маршруты: 
-POST /api/register - создания нового юзера 
-POST /api/login - логин по guid 
-POST /api/security/token/refresh - refresh операция DELETE /api/security/refresh - удаления токена 
-DELETE /api/users/security/refresh - удаления всех токенов юзера
+- POST /api/register - создания нового юзера 
+- POST /api/login - логин по guid 
+- POST /api/security/token/refresh - refresh операция DELETE /api/security/refresh - удаления токена 
+- DELETE /api/users/security/refresh - удаления всех токенов юзера
