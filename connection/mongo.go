@@ -49,7 +49,7 @@ func GetClient(cfg *config.Config) (*mongo.Client, context.CancelFunc) {
 	}
 	OnExitSecondary(func(ctx context.Context) {
 		if err := client.Disconnect(ctx); err != nil {
-			log.Panic("pg.Close failed")
+			log.Panic("pg.Close Failed")
 		}
 	})
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {

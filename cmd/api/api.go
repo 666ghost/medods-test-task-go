@@ -38,8 +38,8 @@ func main() {
 	e.POST("/api/register", h.Create)
 	e.POST("/api/login", h.Login)
 	e.POST("/api/security/token/refresh", h.Refresh, isLoggedIn)
-	e.POST("/api/security/remove_refresh", h.RemoveToken, isLoggedIn)
-	e.POST("/api/users/security/truncate_refresh", h.TruncateUserTokens, isLoggedIn)
+	e.DELETE("/api/security/refresh", h.RemoveToken, isLoggedIn)
+	e.DELETE("/api/users/security/refresh", h.TruncateUserTokens, isLoggedIn)
 
 	e.Logger.Fatal(e.Start(":" + cfg.Port))
 }

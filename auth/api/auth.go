@@ -104,7 +104,7 @@ func (h *Handler) Login(c echo.Context) error {
 	m := make(map[string]string)
 	err := c.Bind(&m)
 	if err != nil {
-		log.Print("failed parsing request ", err)
+		log.Print("Failed parsing request ", err)
 		return echo.ErrInternalServerError
 	}
 	u, err := models.SelectUserByGuid(context.TODO(), m["guid"])
@@ -113,7 +113,7 @@ func (h *Handler) Login(c echo.Context) error {
 	}
 	_, err = models.InvalidateOldUserRefreshTokens(context.TODO(), u)
 	if err != nil {
-		log.Print("failed invalidate old user tokens ", err)
+		log.Print("Failed invalidate old user tokens ", err)
 	}
 
 	tokenPair, err := getNewTokenPair(u)
@@ -150,9 +150,9 @@ func (h *Handler) RemoveToken(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	_, err = models.RemoveToken(context.TODO(), bson.M{"_id": tokenId, "user_id": u.ID})
+	r, err := models.RemoveToken(context.TODO(), bson.M{"_id": tokenId, "user_id": u.ID})
 
-	if err == mongo.ErrNoDocuments {
+	if err == mongo.ErrNoDocuments || r != nil && r.DeletedCount == 0 {
 		return echo.ErrNotFound
 	} else if err != nil {
 		log.Print("Failed removing tokens ", err)
@@ -167,7 +167,7 @@ func (h *Handler) TruncateUserTokens(c echo.Context) error {
 	m := make(map[string]string)
 	err := c.Bind(&m)
 	if err != nil {
-		log.Print("failed parsing request ", err)
+		log.Print("Failed parsing request ", err)
 		return echo.ErrInternalServerError
 	}
 	u, err := models.SelectUserByGuid(context.TODO(), m["guid"])
