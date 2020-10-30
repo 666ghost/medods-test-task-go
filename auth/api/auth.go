@@ -223,7 +223,7 @@ func getNewTokenPair(u *models.User) (map[string]string, error) {
 	claims := accessToken.Claims.(jwt.MapClaims)
 	claims["refresh_id"] = refreshId
 	claims["guid"] = u.Guid
-	claims["exp"] = time.Now().Add(time.Minute * 30).Unix() // Generate encoded token and send it as response.
+	claims["exp"] = time.Now().Add(time.Minute * 15).Unix() // Generate encoded token and send it as response.
 	// The signing string should be secret (a generated UUID          works too)
 	t, err := accessToken.SignedString([]byte(cfg.TokenSecret))
 	if err != nil {
