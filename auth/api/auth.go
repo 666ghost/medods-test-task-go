@@ -176,9 +176,9 @@ func (h *Handler) TruncateUserTokens(c echo.Context) error {
 		return echo.ErrNotFound
 	}
 
-	_, err = models.RemoveToken(context.TODO(), bson.M{"user_id": u.ID})
+	r, err := models.RemoveToken(context.TODO(), bson.M{"user_id": u.ID})
 
-	if err == mongo.ErrNoDocuments {
+	if err == mongo.ErrNoDocuments || r != nil && r.DeletedCount == 0 {
 		return echo.ErrNotFound
 	} else if err != nil {
 		log.Print("Failed removing tokens ", err)
